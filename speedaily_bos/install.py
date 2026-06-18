@@ -10,6 +10,7 @@ APP_NAME = "Speedaily BOS"
 LOGO_URL = "/assets/speedaily_bos/images/logo.png"
 DEFAULT_COUNTRY = "India"
 DEFAULT_CURRENCY = "INR"
+DEFAULT_LANGUAGE = "en"
 DEFAULT_TIMEZONE = "Asia/Kolkata"
 
 SPEEDAILY_ROLES = (
@@ -138,20 +139,14 @@ def provision_owner(
 def apply_branding() -> None:
 	"""Apply only fields available in the installed Frappe version."""
 	if frappe.db.exists("DocType", "Website Settings"):
-		settings = frappe.get_single("Website Settings")
-		_set_if_field(settings, "app_name", APP_NAME)
-		_set_if_field(settings, "app_logo", LOGO_URL)
-		_set_if_field(settings, "favicon", LOGO_URL)
-		_set_if_field(settings, "splash_image", LOGO_URL)
-		_set_if_field(settings, "banner_image", LOGO_URL)
-		settings.flags.ignore_permissions = True
-		settings.save()
+		_set_single_if_field("Website Settings", "app_name", APP_NAME)
+		_set_single_if_field("Website Settings", "app_logo", LOGO_URL)
+		_set_single_if_field("Website Settings", "favicon", LOGO_URL)
+		_set_single_if_field("Website Settings", "splash_image", LOGO_URL)
+		_set_single_if_field("Website Settings", "banner_image", LOGO_URL)
 
 	if frappe.db.exists("DocType", "System Settings"):
-		settings = frappe.get_single("System Settings")
-		_set_if_field(settings, "app_name", APP_NAME)
-		settings.flags.ignore_permissions = True
-		settings.save()
+		_set_single_if_field("System Settings", "app_name", APP_NAME)
 
 
 def ensure_roles() -> None:
@@ -170,13 +165,12 @@ def ensure_roles() -> None:
 def _set_accounting_defaults(country: str, currency: str, timezone: str) -> None:
 	frappe.db.set_default("country", country)
 	frappe.db.set_default("currency", currency)
+	frappe.db.set_default("language", DEFAULT_LANGUAGE)
 
 	if frappe.db.exists("DocType", "System Settings"):
-		settings = frappe.get_single("System Settings")
-		_set_if_field(settings, "country", country)
-		_set_if_field(settings, "time_zone", timezone)
-		settings.flags.ignore_permissions = True
-		settings.save()
+		_set_single_if_field("System Settings", "country", country)
+		_set_single_if_field("System Settings", "language", DEFAULT_LANGUAGE)
+		_set_single_if_field("System Settings", "time_zone", timezone)
 
 
 def _ensure_company(
@@ -245,9 +239,9 @@ def _company_abbreviation(name: str, requested: str | None) -> str:
 	return candidate
 
 
-def _set_if_field(doc: Any, fieldname: str, value: Any) -> None:
-	if doc.meta.has_field(fieldname):
-		doc.set(fieldname, value)
+def _set_single_if_field(doctype: str, fieldname: str, value: Any) -> None:
+	if frappe.get_meta(doctype).has_field(fieldname):
+		frappe.db.set_single_value(doctype, fieldname, value)
 
 
 def _required(value: str | None, fieldname: str) -> str:
@@ -262,4 +256,3 @@ def _require_system_manager() -> None:
 	if frappe.session.user == "Administrator":
 		return
 	frappe.only_for("System Manager")
-

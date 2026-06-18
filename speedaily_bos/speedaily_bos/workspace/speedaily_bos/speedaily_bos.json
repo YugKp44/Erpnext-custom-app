@@ -9,6 +9,7 @@
  "icon": "home",
  "is_hidden": 0,
  "label": "Speedaily BOS",
+ "name": "Speedaily BOS",
  "links": [
   {
    "hidden": 0,
@@ -207,4 +208,3 @@
  "title": "Speedaily BOS",
  "type": "Workspace"
 }
-

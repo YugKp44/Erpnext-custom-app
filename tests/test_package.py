@@ -37,6 +37,7 @@ class PackageStructureTest(unittest.TestCase):
 		)
 		workspace = json.loads(path.read_text(encoding="utf-8"))
 		self.assertEqual("Workspace", workspace["doctype"])
+		self.assertEqual("Speedaily BOS", workspace["name"])
 		self.assertEqual("Speedaily BOS", workspace["title"])
 		self.assertIsInstance(json.loads(workspace["content"]), list)
 		self.assertGreater(len(workspace["links"]), 10)
