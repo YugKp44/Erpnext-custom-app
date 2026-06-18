@@ -14,6 +14,7 @@ class PackageStructureTest(unittest.TestCase):
 			"speedaily_bos/__init__.py",
 			"speedaily_bos/hooks.py",
 			"speedaily_bos/install.py",
+			"speedaily_bos/sso.py",
 			"speedaily_bos/public/css/speedaily.css",
 			"speedaily_bos/public/js/speedaily.js",
 			"speedaily_bos/public/images/logo.png",
