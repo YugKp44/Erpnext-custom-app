@@ -26,6 +26,22 @@ class PackageStructureTest(unittest.TestCase):
 		for path in (ROOT / "speedaily_bos").rglob("*.py"):
 			ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
+	def test_tenant_setup_bootstraps_required_erpnext_masters(self):
+		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		tree = ast.parse(source)
+		functions = {
+			node.name: node
+			for node in tree.body
+			if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+		}
+		configure_calls = {
+			node.func.id
+			for node in ast.walk(functions["configure_tenant"])
+			if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+		}
+		self.assertIn("ensure_required_erpnext_masters", configure_calls)
+		self.assertIn('"__newname": "Transit"', source)
+
 	def test_workspace_is_valid_json(self):
 		path = (
 			ROOT

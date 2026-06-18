@@ -35,6 +35,7 @@ def after_install() -> None:
 	"""Install idempotent branding and access primitives."""
 	apply_branding()
 	ensure_roles()
+	ensure_required_erpnext_masters()
 	frappe.clear_cache()
 
 
@@ -42,6 +43,7 @@ def after_migrate() -> None:
 	"""Restore app-owned configuration after framework migrations."""
 	apply_branding()
 	ensure_roles()
+	ensure_required_erpnext_masters()
 	frappe.clear_cache()
 
 
@@ -62,6 +64,7 @@ def configure_tenant(
 
 	apply_branding()
 	ensure_roles()
+	ensure_required_erpnext_masters()
 	_set_accounting_defaults(country, currency, timezone)
 	company = _ensure_company(
 		organization_name=organization_name,
@@ -160,6 +163,24 @@ def ensure_roles() -> None:
 				"desk_access": 1,
 			}
 		).insert(ignore_permissions=True)
+
+
+def ensure_required_erpnext_masters() -> None:
+	"""Create ERPNext masters required by automated company provisioning."""
+	if not frappe.db.exists("DocType", "Warehouse Type"):
+		return
+	if frappe.db.exists("Warehouse Type", "Transit"):
+		return
+
+	warehouse_type = frappe.get_doc(
+		{
+			"doctype": "Warehouse Type",
+			"__newname": "Transit",
+			"description": "Goods moving between company warehouses",
+		}
+	)
+	warehouse_type.flags.ignore_permissions = True
+	warehouse_type.insert()
 
 
 def _set_accounting_defaults(country: str, currency: str, timezone: str) -> None:
