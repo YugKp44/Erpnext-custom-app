@@ -72,6 +72,7 @@ def configure_tenant(
 		country=country,
 		currency=currency,
 	)
+	complete_automated_setup()
 	frappe.clear_cache()
 
 	return {
@@ -181,6 +182,26 @@ def ensure_required_erpnext_masters() -> None:
 	)
 	warehouse_type.flags.ignore_permissions = True
 	warehouse_type.insert()
+
+
+def complete_automated_setup() -> None:
+	"""Mark installed applications ready after Speedaily finishes tenant setup."""
+	if not frappe.db.exists("DocType", "Installed Application"):
+		return
+
+	installed_apps = frappe.get_installed_apps(_ensure_on_bench=True)
+	for app_name in installed_apps:
+		frappe.db.set_value(
+			"Installed Application",
+			{"app_name": app_name},
+			"is_setup_complete",
+			1,
+		)
+
+	if frappe.db.exists("DocType", "System Settings"):
+		_set_single_if_field("System Settings", "setup_complete", 1)
+		_set_single_if_field("System Settings", "enable_onboarding", 1)
+	frappe.db.set_default("desktop:home_page", "workspace")
 
 
 def _set_accounting_defaults(country: str, currency: str, timezone: str) -> None:

@@ -3,6 +3,7 @@
 
 	const BRAND = "Speedaily BOS";
 	const LOGO = "/assets/speedaily_bos/images/logo.png";
+	const LOGO_PATH = new URL(LOGO, window.location.origin).pathname;
 
 	const updateTitle = () => {
 		if (!document.title || /frappe|erpnext/i.test(document.title)) {
@@ -23,7 +24,11 @@
 		];
 
 		document.querySelectorAll(selectors.join(",")).forEach((image) => {
-			if (image instanceof HTMLImageElement && image.src !== LOGO) {
+			if (
+				image instanceof HTMLImageElement &&
+				!image.closest(".speedaily-brand-lockup") &&
+				new URL(image.src, window.location.origin).pathname !== LOGO_PATH
+			) {
 				image.src = LOGO;
 				image.alt = BRAND;
 			}
@@ -50,12 +55,25 @@
 
 	const start = () => {
 		applyBranding();
-		const observer = new MutationObserver(applyBranding);
+
+		let scheduled = false;
+		const scheduleBranding = () => {
+			if (scheduled) {
+				return;
+			}
+			scheduled = true;
+			window.requestAnimationFrame(() => {
+				scheduled = false;
+				applyBranding();
+			});
+		};
+
+		const observer = new MutationObserver(scheduleBranding);
 		observer.observe(document.documentElement, {
 			childList: true,
 			subtree: true,
 		});
-		window.setTimeout(() => observer.disconnect(), 15000);
+		window.setTimeout(() => observer.disconnect(), 8000);
 	};
 
 	if (document.readyState === "loading") {
@@ -64,4 +82,3 @@
 		start();
 	}
 })();
-
