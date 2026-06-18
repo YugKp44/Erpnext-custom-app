@@ -40,6 +40,7 @@ class PackageStructureTest(unittest.TestCase):
 			if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
 		}
 		self.assertIn("ensure_required_erpnext_masters", configure_calls)
+		self.assertIn("ensure_indian_fiscal_years", configure_calls)
 		self.assertIn("complete_automated_setup", configure_calls)
 		self.assertIn('"__newname": "Transit"', source)
 

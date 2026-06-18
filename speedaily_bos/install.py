@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 import frappe
 from frappe import _
+from frappe.utils import getdate, today
 
 APP_NAME = "Speedaily BOS"
 LOGO_URL = "/assets/speedaily_bos/images/logo.png"
@@ -72,6 +74,7 @@ def configure_tenant(
 		country=country,
 		currency=currency,
 	)
+	ensure_indian_fiscal_years(company)
 	complete_automated_setup()
 	frappe.clear_cache()
 
@@ -202,6 +205,60 @@ def complete_automated_setup() -> None:
 		_set_single_if_field("System Settings", "setup_complete", 1)
 		_set_single_if_field("System Settings", "enable_onboarding", 1)
 	frappe.db.set_default("desktop:home_page", "workspace")
+
+
+def ensure_indian_fiscal_years(company: str, reference_date: str | date | None = None) -> list[str]:
+	"""Ensure the current and next April-March fiscal years exist for a company."""
+	if not frappe.db.exists("DocType", "Fiscal Year"):
+		return []
+
+	current_date = getdate(reference_date or today())
+	start_year = current_date.year if current_date.month >= 4 else current_date.year - 1
+	fiscal_years = []
+
+	for year in (start_year, start_year + 1):
+		start_date = date(year, 4, 1)
+		end_date = date(year + 1, 3, 31)
+		fiscal_years.append(_ensure_fiscal_year(company, start_date, end_date))
+
+	frappe.cache().delete_key("fiscal_years")
+	return fiscal_years
+
+
+def _ensure_fiscal_year(company: str, start_date: date, end_date: date) -> str:
+	existing = frappe.db.get_value(
+		"Fiscal Year",
+		{
+			"year_start_date": start_date,
+			"year_end_date": end_date,
+		},
+		"name",
+	)
+	if existing:
+		doc = frappe.get_doc("Fiscal Year", existing)
+		companies = {row.company for row in doc.get("companies")}
+		if companies and company not in companies:
+			doc.append("companies", {"company": company})
+			doc.flags.ignore_permissions = True
+			doc.save()
+		if doc.disabled:
+			doc.db_set("disabled", 0)
+		return doc.name
+
+	year_name = f"{start_date.year}-{end_date.year}"
+	doc = frappe.get_doc(
+		{
+			"doctype": "Fiscal Year",
+			"year": year_name,
+			"year_start_date": start_date,
+			"year_end_date": end_date,
+			"disabled": 0,
+			"companies": [{"company": company}],
+		}
+	)
+	doc.flags.ignore_permissions = True
+	doc.insert()
+	return doc.name
 
 
 def _set_accounting_defaults(country: str, currency: str, timezone: str) -> None:
