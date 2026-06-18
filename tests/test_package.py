@@ -1,0 +1,57 @@
+import ast
+import json
+import pathlib
+import tomllib
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+class PackageStructureTest(unittest.TestCase):
+	def test_required_files_exist(self):
+		required = [
+			"pyproject.toml",
+			"speedaily_bos/__init__.py",
+			"speedaily_bos/hooks.py",
+			"speedaily_bos/install.py",
+			"speedaily_bos/public/css/speedaily.css",
+			"speedaily_bos/public/js/speedaily.js",
+			"speedaily_bos/public/images/logo.png",
+			"speedaily_bos/speedaily_bos/workspace/speedaily_bos/speedaily_bos.json",
+		]
+		for relative_path in required:
+			self.assertTrue((ROOT / relative_path).is_file(), relative_path)
+
+	def test_python_files_parse(self):
+		for path in (ROOT / "speedaily_bos").rglob("*.py"):
+			ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+	def test_workspace_is_valid_json(self):
+		path = (
+			ROOT
+			/ "speedaily_bos"
+			/ "speedaily_bos"
+			/ "workspace"
+			/ "speedaily_bos"
+			/ "speedaily_bos.json"
+		)
+		workspace = json.loads(path.read_text(encoding="utf-8"))
+		self.assertEqual("Workspace", workspace["doctype"])
+		self.assertEqual("Speedaily BOS", workspace["title"])
+		self.assertIsInstance(json.loads(workspace["content"]), list)
+		self.assertGreater(len(workspace["links"]), 10)
+
+	def test_frappe_dependencies_are_pinned_to_version_16(self):
+		metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+		dependencies = metadata["tool"]["bench"]["frappe-dependencies"]
+		self.assertEqual(
+			{"frappe", "erpnext", "india_compliance"},
+			set(dependencies),
+		)
+		for version_range in dependencies.values():
+			self.assertIn(">=16.0.0", version_range)
+			self.assertIn("<17.0.0", version_range)
+
+
+if __name__ == "__main__":
+	unittest.main()

@@ -1,0 +1,113 @@
+:root {
+	--speedaily-primary: #168f85;
+	--speedaily-primary-strong: #0f756d;
+	--speedaily-navy: #102044;
+	--speedaily-cyan: #18abc2;
+	--speedaily-gold: #f4c542;
+	--speedaily-surface: #f5faf9;
+	--speedaily-border: #d8e8e6;
+	--speedaily-focus: rgba(22, 143, 133, 0.24);
+}
+
+body {
+	letter-spacing: 0;
+}
+
+.navbar,
+.desk-navbar {
+	border-bottom-color: var(--speedaily-border);
+}
+
+.navbar-brand .app-logo,
+.navbar-home img,
+.app-logo {
+	max-height: 30px;
+	object-fit: contain;
+}
+
+.speedaily-brand-lockup {
+	align-items: center;
+	color: var(--speedaily-navy);
+	display: inline-flex;
+	font-size: 15px;
+	font-weight: 700;
+	gap: 8px;
+	letter-spacing: 0;
+	white-space: nowrap;
+}
+
+.speedaily-brand-lockup img {
+	height: 30px;
+	width: 30px;
+	object-fit: contain;
+}
+
+.btn-primary,
+.btn-primary:active,
+.btn-primary:focus {
+	background-color: var(--speedaily-primary);
+	border-color: var(--speedaily-primary);
+	box-shadow: none;
+}
+
+.btn-primary:hover {
+	background-color: var(--speedaily-primary-strong);
+	border-color: var(--speedaily-primary-strong);
+}
+
+.form-control:focus,
+.input-with-feedback:focus {
+	border-color: var(--speedaily-primary);
+	box-shadow: 0 0 0 3px var(--speedaily-focus);
+}
+
+.indicator-pill.green,
+.indicator-pill.blue {
+	background: rgba(22, 143, 133, 0.12);
+	color: var(--speedaily-primary-strong);
+}
+
+.page-head {
+	background: rgba(255, 255, 255, 0.96);
+	border-bottom: 1px solid var(--speedaily-border);
+}
+
+.layout-side-section {
+	background: var(--speedaily-surface);
+}
+
+.desk-sidebar .standard-sidebar-item.selected,
+.desk-sidebar .standard-sidebar-item:hover {
+	background: rgba(22, 143, 133, 0.1);
+	color: var(--speedaily-primary-strong);
+}
+
+.for-login,
+.for-forgot,
+.for-signup {
+	background:
+		radial-gradient(circle at 10% 10%, rgba(24, 171, 194, 0.12), transparent 28%),
+		linear-gradient(135deg, #f6fffd 0%, #eef5ff 100%);
+}
+
+.for-login .page-card,
+.for-forgot .page-card,
+.for-signup .page-card {
+	border: 1px solid var(--speedaily-border);
+	border-radius: 8px;
+	box-shadow: 0 18px 48px rgba(16, 32, 68, 0.12);
+}
+
+.for-login .page-card-head img,
+.for-forgot .page-card-head img,
+.for-signup .page-card-head img {
+	max-height: 72px;
+	object-fit: contain;
+}
+
+@media (max-width: 768px) {
+	.speedaily-brand-lockup span {
+		display: none;
+	}
+}
+

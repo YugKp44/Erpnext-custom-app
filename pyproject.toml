@@ -1,0 +1,31 @@
+[project]
+name = "speedaily_bos"
+description = "Speedaily BOS branding, tenant setup, roles, and workspace for ERPNext"
+authors = [
+    { name = "Speedaily", email = "support@speedaily.com" },
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+dependencies = []
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0,<17.0.0"
+erpnext = ">=16.0.0,<17.0.0"
+india_compliance = ">=16.0.0,<17.0.0"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "UP", "W"]
+ignore = ["E501", "W191"]
+
+[tool.ruff.format]
+indent-style = "tab"
+quote-style = "double"

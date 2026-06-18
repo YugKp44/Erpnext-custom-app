@@ -1,0 +1,11 @@
+Copyright (c) 2026 Speedaily
+
+All rights reserved.
+
+This application is proprietary software. It may be used, copied, modified,
+or distributed only with written permission from Speedaily.
+
+This license applies only to the Speedaily BOS custom application. Frappe,
+ERPNext, India Compliance, and other dependencies remain governed by their
+respective licenses.
+

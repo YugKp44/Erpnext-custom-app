@@ -1,0 +1,14 @@
+include README.md
+include license.txt
+recursive-include speedaily_bos *.css
+recursive-include speedaily_bos *.csv
+recursive-include speedaily_bos *.html
+recursive-include speedaily_bos *.ico
+recursive-include speedaily_bos *.js
+recursive-include speedaily_bos *.json
+recursive-include speedaily_bos *.md
+recursive-include speedaily_bos *.png
+recursive-include speedaily_bos *.py
+recursive-include speedaily_bos *.svg
+recursive-include speedaily_bos *.txt
+
