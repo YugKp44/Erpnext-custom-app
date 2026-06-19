@@ -61,6 +61,12 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIsInstance(json.loads(workspace["content"]), list)
 		self.assertGreater(len(workspace["links"]), 10)
 
+	def test_owner_defaults_to_speedaily_workspace(self):
+		install_source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		sso_source = (ROOT / "speedaily_bos" / "sso.py").read_text(encoding="utf-8")
+		self.assertIn("doc.default_workspace = APP_NAME", install_source)
+		self.assertIn('frappe.local.response["location"] = "/app"', sso_source)
+
 	def test_frappe_dependencies_are_pinned_to_version_16(self):
 		metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 		dependencies = metadata["tool"]["bench"]["frappe-dependencies"]

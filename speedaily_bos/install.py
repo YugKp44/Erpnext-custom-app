@@ -127,6 +127,9 @@ def provision_owner(
 		if frappe.db.exists("Role", role) and role not in existing_roles:
 			doc.append("roles", {"role": role})
 
+	if frappe.db.exists("Workspace", APP_NAME):
+		doc.default_workspace = APP_NAME
+
 	doc.flags.ignore_permissions = True
 	doc.save()
 
