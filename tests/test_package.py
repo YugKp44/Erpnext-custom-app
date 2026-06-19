@@ -67,6 +67,43 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn("doc.default_workspace = APP_NAME", install_source)
 		self.assertIn('frappe.local.response["location"] = "/app"', sso_source)
 
+	def test_owner_receives_operational_master_data_roles(self):
+		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		tree = ast.parse(source)
+		owner_roles = next(
+			node
+			for node in tree.body
+			if isinstance(node, ast.Assign)
+			and any(isinstance(target, ast.Name) and target.id == "OWNER_ROLES" for target in node.targets)
+		)
+		roles = {element.value for element in owner_roles.value.elts}
+		self.assertTrue(
+			{
+				"Accounts User",
+				"Sales User",
+				"Sales Master Manager",
+				"Purchase User",
+				"Purchase Master Manager",
+				"Stock User",
+				"Item Manager",
+				"Manufacturing Manager",
+				"Projects Manager",
+				"Quality Manager",
+				"Maintenance Manager",
+				"Support Manager",
+				"Analytics",
+			}.issubset(roles)
+		)
+		self.assertTrue(
+			{
+				"System Manager",
+				"Role Manager",
+				"User Manager",
+				"Script Manager",
+				"Workspace Manager",
+			}.isdisjoint(roles)
+		)
+
 	def test_frappe_dependencies_are_pinned_to_version_16(self):
 		metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 		dependencies = metadata["tool"]["bench"]["frappe-dependencies"]
