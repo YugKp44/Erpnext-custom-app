@@ -48,4 +48,4 @@ def consume_login_ticket(ticket: str) -> None:
 
 	frappe.local.login_manager.login_as(email)
 	frappe.local.response["type"] = "redirect"
-	frappe.local.response["location"] = "/desk/speedaily-bos"
+	frappe.local.response["location"] = "/app/speedaily-bos"
