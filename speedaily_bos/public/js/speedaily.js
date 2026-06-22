@@ -4,6 +4,7 @@
 	const BRAND = "Speedaily BOS";
 	const LOGO = "/assets/speedaily_bos/images/logo.png";
 	const LOGO_PATH = new URL(LOGO, window.location.origin).pathname;
+	const TEAM_URL = "https://speedaily.dev/app/team";
 
 	const updateTitle = () => {
 		if (!document.title || /frappe|erpnext/i.test(document.title)) {
@@ -47,10 +48,38 @@
 		home.replaceChildren(lockup);
 	};
 
+	const addTeamAccess = () => {
+		const roles = Array.isArray(window.frappe?.user_roles)
+			? window.frappe.user_roles
+			: [];
+		if (
+			!roles.includes("Speedaily Owner") ||
+			document.querySelector(".speedaily-team-link")
+		) {
+			return;
+		}
+
+		const navbar = document.querySelector(".navbar .navbar-nav");
+		if (!navbar) {
+			return;
+		}
+
+		const item = document.createElement("li");
+		item.className = "nav-item speedaily-team-link";
+		const link = document.createElement("a");
+		link.className = "nav-link";
+		link.href = TEAM_URL;
+		link.textContent = "Team";
+		link.title = "Manage teammates and access";
+		item.append(link);
+		navbar.prepend(item);
+	};
+
 	const applyBranding = () => {
 		updateTitle();
 		updateLogo();
 		addBrandLockup();
+		addTeamAccess();
 	};
 
 	const start = () => {

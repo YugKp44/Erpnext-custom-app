@@ -104,6 +104,34 @@ class PackageStructureTest(unittest.TestCase):
 			}.isdisjoint(roles)
 		)
 
+	def test_teammate_profiles_are_explicit_and_managed_roles_are_replaced(self):
+		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		self.assertIn('"ACCOUNTANT": (', source)
+		self.assertIn('"SALES": (', source)
+		self.assertIn('"PURCHASE": (', source)
+		self.assertIn('"INVENTORY": (', source)
+		self.assertIn('"AUDITOR": (', source)
+		self.assertIn("MANAGED_BUSINESS_ROLES", source)
+		self.assertIn("row.role not in MANAGED_BUSINESS_ROLES", source)
+		self.assertIn("clear_sessions(user=email", source)
+
+	def test_experience_profiles_control_roles_and_workspace_links(self):
+		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		self.assertIn("OWNER_EXPERIENCE_ROLES", source)
+		self.assertIn('"ESSENTIALS": {', source)
+		self.assertIn('"BUSINESS": {', source)
+		self.assertIn("def configure_experience(", source)
+		self.assertIn("link.hidden = 0 if link.label in allowed else 1", source)
+		self.assertIn("EXPERIENCE_BLOCKED_MODULES", source)
+		self.assertIn('user_doc.set(\n\t\t"block_modules"', source)
+
+	def test_owner_can_reach_speedaily_team_management(self):
+		source = (
+			ROOT / "speedaily_bos" / "public" / "js" / "speedaily.js"
+		).read_text(encoding="utf-8")
+		self.assertIn('const TEAM_URL = "https://speedaily.dev/app/team"', source)
+		self.assertIn('roles.includes("Speedaily Owner")', source)
+
 	def test_frappe_dependencies_are_pinned_to_version_16(self):
 		metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 		dependencies = metadata["tool"]["bench"]["frappe-dependencies"]
