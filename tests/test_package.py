@@ -144,6 +144,16 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn('const TEAM_URL = "https://speedaily.dev/app/team"', source)
 		self.assertIn('roles.includes("Speedaily Owner")', source)
 
+	def test_logout_returns_users_to_speedaily_sign_in(self):
+		source = (
+			ROOT / "speedaily_bos" / "public" / "js" / "speedaily.js"
+		).read_text(encoding="utf-8")
+		self.assertIn('const SIGN_IN_URL = "https://speedaily.dev/signin"', source)
+		self.assertIn("window.frappe.app.redirect_to_login = redirectToSpeedailySignIn", source)
+		self.assertIn('window.location.pathname === "/login"', source)
+		self.assertIn('has("redirect-to")', source)
+		self.assertIn("window.location.replace(SIGN_IN_URL)", source)
+
 	def test_frappe_dependencies_are_pinned_to_version_16(self):
 		metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 		dependencies = metadata["tool"]["bench"]["frappe-dependencies"]

@@ -5,6 +5,38 @@
 	const LOGO = "/assets/speedaily_bos/images/logo.png";
 	const LOGO_PATH = new URL(LOGO, window.location.origin).pathname;
 	const TEAM_URL = "https://speedaily.dev/app/team";
+	const SIGN_IN_URL = "https://speedaily.dev/signin";
+
+	const redirectToSpeedailySignIn = () => {
+		window.location.replace(SIGN_IN_URL);
+	};
+
+	const redirectLoggedOutUsers = () => {
+		if (
+			window.location.pathname === "/login" &&
+			new URLSearchParams(window.location.search).has("redirect-to")
+		) {
+			redirectToSpeedailySignIn();
+			return;
+		}
+
+		if (window.frappe?.app) {
+			window.frappe.app.redirect_to_login = redirectToSpeedailySignIn;
+		}
+
+		if (window.frappe) {
+			window.frappe.logout = () => {
+				window.frappe.call({
+					method: "logout",
+					callback: (response) => {
+						if (!response.exc) {
+							redirectToSpeedailySignIn();
+						}
+					},
+				});
+			};
+		}
+	};
 
 	const updateTitle = () => {
 		if (!document.title || /frappe|erpnext/i.test(document.title)) {
@@ -76,6 +108,7 @@
 	};
 
 	const applyBranding = () => {
+		redirectLoggedOutUsers();
 		updateTitle();
 		updateLogo();
 		addBrandLockup();
