@@ -74,7 +74,7 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn('frappe.local.response["location"] = "/app"', source)
 		self.assertIn("frappe.respond_as_web_page(", source)
 		self.assertIn("isinstance(payload, dict)", source)
-		self.assertIn("frappe.clear_messages()", source)
+		self.assertNotIn("frappe.clear_messages()", source)
 		self.assertIn("def _respond_with_sign_in_error(", source)
 		self.assertIn("TICKET_TTL_SECONDS = 300", source)
 

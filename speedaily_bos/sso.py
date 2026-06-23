@@ -65,7 +65,6 @@ def consume_login_ticket(ticket: str) -> None:
 		frappe.local.response["type"] = "redirect"
 		frappe.local.response["location"] = "/app"
 	except Exception:
-		frappe.clear_messages()
 		frappe.log_error(
 			title="Speedaily workspace sign-in failed",
 			message=frappe.get_traceback(),
