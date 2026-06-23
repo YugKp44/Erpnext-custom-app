@@ -4,7 +4,6 @@ import secrets
 
 import frappe
 from frappe import _
-from frappe.utils.oauth import redirect_post_login
 
 TICKET_TTL_SECONDS = 300
 TICKET_PREFIX = "speedaily-sso:"
@@ -61,6 +60,7 @@ def consume_login_ticket(ticket: str) -> None:
 
 	try:
 		frappe.local.login_manager.login_as(email)
+		frappe.db.commit()
 	except Exception:
 		frappe.log_error(
 			title="Speedaily workspace sign-in failed",
@@ -75,4 +75,5 @@ def consume_login_ticket(ticket: str) -> None:
 		return
 
 	frappe.cache.delete_value(cache_key)
-	redirect_post_login(desk_user=True)
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = "/app"
