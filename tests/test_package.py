@@ -45,6 +45,14 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn("complete_automated_setup", configure_calls)
 		self.assertIn('"__newname": "Transit"', source)
 
+	def test_provisioning_template_refuses_customer_data_and_clears_credentials(self):
+		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		self.assertIn("def prepare_provisioning_template(", source)
+		self.assertIn('companies = frappe.get_all("Company"', source)
+		self.assertIn('allowed_users = {"Administrator", "Guest"}', source)
+		self.assertIn("delete from `__Auth` where `doctype` = 'User'", source)
+		self.assertIn('"status": "READY_FOR_BACKUP"', source)
+
 	def test_workspace_is_valid_json(self):
 		path = (
 			ROOT

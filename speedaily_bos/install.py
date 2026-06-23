@@ -200,6 +200,59 @@ def after_migrate() -> None:
 
 
 @frappe.whitelist()
+def prepare_provisioning_template(template_version: str) -> dict[str, Any]:
+	"""Refuse customer data and remove reusable credentials before backup."""
+	_require_system_manager()
+	template_version = _required(template_version, "template_version")
+	if not re.fullmatch(r"[A-Za-z0-9._-]{1,80}", template_version):
+		frappe.throw(_("Template version contains unsupported characters"))
+
+	companies = frappe.get_all("Company", pluck="name")
+	if companies:
+		frappe.throw(
+			_("Provisioning template must not contain company data: {0}").format(
+				", ".join(companies)
+			)
+		)
+
+	allowed_users = {"Administrator", "Guest"}
+	unexpected_users = [
+		user
+		for user in frappe.get_all("User", pluck="name")
+		if user not in allowed_users
+	]
+	if unexpected_users:
+		frappe.throw(
+			_("Provisioning template contains non-system users: {0}").format(
+				", ".join(unexpected_users)
+			)
+		)
+
+	if frappe.get_meta("User").has_field("api_key"):
+		frappe.db.sql("update `tabUser` set `api_key` = null")
+	frappe.db.sql("delete from `__Auth` where `doctype` = 'User'")
+
+	for doctype in (
+		"Sessions",
+		"Activity Log",
+		"Access Log",
+		"Error Log",
+		"Scheduled Job Log",
+		"Route History",
+	):
+		if frappe.db.exists("DocType", doctype):
+			frappe.db.delete(doctype)
+
+	frappe.db.set_default("speedaily_template_version", template_version)
+	frappe.db.commit()
+	frappe.clear_cache()
+	return {
+		"template_version": template_version,
+		"status": "READY_FOR_BACKUP",
+	}
+
+
+@frappe.whitelist()
 def configure_tenant(
 	organization_name: str,
 	abbreviation: str | None = None,
