@@ -65,7 +65,15 @@ class PackageStructureTest(unittest.TestCase):
 		install_source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
 		sso_source = (ROOT / "speedaily_bos" / "sso.py").read_text(encoding="utf-8")
 		self.assertIn("doc.default_workspace = APP_NAME", install_source)
-		self.assertIn('frappe.local.response["location"] = "/app"', sso_source)
+		self.assertIn("redirect_post_login(desk_user=True)", sso_source)
+
+	def test_sso_uses_frappe_redirect_and_friendly_expiry_page(self):
+		source = (ROOT / "speedaily_bos" / "sso.py").read_text(encoding="utf-8")
+		self.assertIn("from frappe.utils.oauth import redirect_post_login", source)
+		self.assertIn("redirect_post_login(desk_user=True)", source)
+		self.assertIn("frappe.respond_as_web_page(", source)
+		self.assertIn("TICKET_TTL_SECONDS = 300", source)
+		self.assertNotIn('frappe.local.response["location"]', source)
 
 	def test_owner_receives_operational_master_data_roles(self):
 		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")

@@ -4,8 +4,9 @@ import secrets
 
 import frappe
 from frappe import _
+from frappe.utils.oauth import redirect_post_login
 
-TICKET_TTL_SECONDS = 90
+TICKET_TTL_SECONDS = 300
 TICKET_PREFIX = "speedaily-sso:"
 
 
@@ -39,13 +40,39 @@ def consume_login_ticket(ticket: str) -> None:
 	cache_key = f"{TICKET_PREFIX}{(ticket or '').strip()}"
 	payload = frappe.cache.get_value(cache_key)
 	if not payload:
-		frappe.throw(_("This sign-in link is invalid or has expired"), frappe.AuthenticationError)
+		frappe.respond_as_web_page(
+			_("Sign-in link expired"),
+			_("Return to Speedaily and open your workspace again."),
+			http_status_code=403,
+			indicator_color="orange",
+		)
+		return
 
-	frappe.cache.delete_value(cache_key)
 	email = payload.get("user")
 	if not email or not frappe.db.get_value("User", email, "enabled"):
-		frappe.throw(_("This workspace user is unavailable"), frappe.AuthenticationError)
+		frappe.cache.delete_value(cache_key)
+		frappe.respond_as_web_page(
+			_("Workspace access unavailable"),
+			_("Ask your organization owner to verify your workspace access."),
+			http_status_code=403,
+			indicator_color="red",
+		)
+		return
 
-	frappe.local.login_manager.login_as(email)
-	frappe.local.response["type"] = "redirect"
-	frappe.local.response["location"] = "/app"
+	try:
+		frappe.local.login_manager.login_as(email)
+	except Exception:
+		frappe.log_error(
+			title="Speedaily workspace sign-in failed",
+			message=frappe.get_traceback(),
+		)
+		frappe.respond_as_web_page(
+			_("Workspace sign-in could not finish"),
+			_("Return to Speedaily and try opening your workspace again."),
+			http_status_code=500,
+			indicator_color="red",
+		)
+		return
+
+	frappe.cache.delete_value(cache_key)
+	redirect_post_login(desk_user=True)
