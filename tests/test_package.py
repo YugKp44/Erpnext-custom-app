@@ -145,6 +145,58 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn("EXPERIENCE_BLOCKED_MODULES", source)
 		self.assertIn('user_doc.set(\n\t\t"block_modules"', source)
 
+	def test_essentials_owner_can_create_core_business_records(self):
+		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
+		tree = ast.parse(source)
+		roles_node = next(
+			node
+			for node in tree.body
+			if isinstance(node, ast.Assign)
+			and any(
+				isinstance(target, ast.Name) and target.id == "OWNER_EXPERIENCE_ROLES"
+				for target in node.targets
+			)
+		)
+		essentials = next(
+			element
+			for key, element in zip(roles_node.value.keys, roles_node.value.values)
+			if key.value == "ESSENTIALS"
+		)
+		roles = {element.value for element in essentials.elts}
+		self.assertTrue(
+			{
+				"Sales Master Manager",
+				"Purchase Manager",
+				"Purchase Master Manager",
+				"Stock User",
+				"Stock Manager",
+				"Item Manager",
+			}.issubset(roles)
+		)
+
+	def test_workspace_has_core_demo_flow_links(self):
+		path = (
+			ROOT
+			/ "speedaily_bos"
+			/ "speedaily_bos"
+			/ "workspace"
+			/ "speedaily_bos"
+			/ "speedaily_bos.json"
+		)
+		workspace = json.loads(path.read_text(encoding="utf-8"))
+		labels = {link["label"] for link in workspace["links"]}
+		self.assertTrue(
+			{
+				"Customers",
+				"Items",
+				"Suppliers",
+				"Sales Orders",
+				"Purchase Orders",
+				"Sales Invoices",
+				"Purchase Invoices",
+			}.issubset(labels)
+		)
+
 	def test_owner_can_reach_speedaily_team_management(self):
 		source = (
 			ROOT / "speedaily_bos" / "public" / "js" / "speedaily.js"
