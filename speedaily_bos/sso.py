@@ -36,44 +36,57 @@ def create_login_ticket(email: str) -> dict[str, str]:
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def consume_login_ticket(ticket: str) -> None:
 	"""Consume a login ticket once, establish a Frappe session, and enter Desk."""
-	cache_key = f"{TICKET_PREFIX}{(ticket or '').strip()}"
-	payload = frappe.cache.get_value(cache_key)
-	if not payload:
-		frappe.respond_as_web_page(
-			_("Sign-in link expired"),
-			_("Return to Speedaily and open your workspace again."),
-			http_status_code=403,
-			indicator_color="orange",
-		)
-		return
-
-	email = payload.get("user")
-	if not email or not frappe.db.get_value("User", email, "enabled"):
-		frappe.cache.delete_value(cache_key)
-		frappe.respond_as_web_page(
-			_("Workspace access unavailable"),
-			_("Ask your organization owner to verify your workspace access."),
-			http_status_code=403,
-			indicator_color="red",
-		)
-		return
-
 	try:
+		cache_key = f"{TICKET_PREFIX}{(ticket or '').strip()}"
+		payload = frappe.cache.get_value(cache_key)
+		if not payload:
+			_respond_with_sign_in_error(
+				_("Sign-in link expired"),
+				_("Return to Speedaily and open your workspace again."),
+				403,
+				"orange",
+			)
+			return
+
+		email = payload.get("user") if isinstance(payload, dict) else None
+		if not email or not frappe.db.get_value("User", email, "enabled"):
+			frappe.cache.delete_value(cache_key)
+			_respond_with_sign_in_error(
+				_("Workspace access unavailable"),
+				_("Ask your organization owner to verify your workspace access."),
+				403,
+				"red",
+			)
+			return
+
 		frappe.local.login_manager.login_as(email)
 		frappe.db.commit()
+		frappe.cache.delete_value(cache_key)
+		frappe.local.response["type"] = "redirect"
+		frappe.local.response["location"] = "/app"
 	except Exception:
+		frappe.clear_messages()
 		frappe.log_error(
 			title="Speedaily workspace sign-in failed",
 			message=frappe.get_traceback(),
 		)
-		frappe.respond_as_web_page(
+		_respond_with_sign_in_error(
 			_("Workspace sign-in could not finish"),
 			_("Return to Speedaily and try opening your workspace again."),
-			http_status_code=500,
-			indicator_color="red",
+			500,
+			"red",
 		)
-		return
 
-	frappe.cache.delete_value(cache_key)
-	frappe.local.response["type"] = "redirect"
-	frappe.local.response["location"] = "/app"
+
+def _respond_with_sign_in_error(
+	title: str,
+	message: str,
+	status_code: int,
+	indicator_color: str,
+) -> None:
+	frappe.respond_as_web_page(
+		title,
+		message,
+		http_status_code=status_code,
+		indicator_color=indicator_color,
+	)
