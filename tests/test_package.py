@@ -121,7 +121,8 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn('"ESSENTIALS": {', source)
 		self.assertIn('"BUSINESS": {', source)
 		self.assertIn("def configure_experience(", source)
-		self.assertIn("link.hidden = 0 if link.label in allowed else 1", source)
+		self.assertIn("frappe.db.set_value(", source)
+		self.assertNotIn("workspace.save()", source)
 		self.assertIn("EXPERIENCE_BLOCKED_MODULES", source)
 		self.assertIn('user_doc.set(\n\t\t"block_modules"', source)
 

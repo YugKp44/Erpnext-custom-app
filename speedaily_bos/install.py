@@ -416,14 +416,22 @@ def configure_experience(
 	allowed = EXPERIENCE_LINKS.get(experience_level)
 	for link in workspace.get("links"):
 		if link.type == "Card Break":
-			link.hidden = 0
+			hidden = 0
 		elif allowed is None:
-			link.hidden = 0
+			hidden = 0
 		else:
-			link.hidden = 0 if link.label in allowed else 1
+			hidden = 0 if link.label in allowed else 1
+		if link.hidden != hidden:
+			frappe.db.set_value(
+				link.doctype,
+				link.name,
+				"hidden",
+				hidden,
+				update_modified=False,
+			)
 
-	workspace.flags.ignore_permissions = True
-	workspace.save()
+	workspace.db_set("modified", frappe.utils.now(), update_modified=False)
+	frappe.clear_cache(doctype="Workspace")
 	frappe.db.set_default("speedaily_experience_level", experience_level)
 	frappe.db.set_default("speedaily_industry", (industry or "OTHER").upper())
 	frappe.db.set_default("speedaily_inventory_enabled", int(bool(maintains_inventory)))
