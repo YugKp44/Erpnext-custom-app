@@ -6,6 +6,26 @@
 	const LOGO_PATH = new URL(LOGO, window.location.origin).pathname;
 	const TEAM_URL = "https://speedaily.dev/app/team";
 	const SIGN_IN_URL = "https://speedaily.dev/signin";
+	const UPSTREAM_APP_NAMES = new Set(["erpnext", "frappe"]);
+	const UPSTREAM_BRAND_PATTERN = /\b(?:ERPNext|Frappe(?: Framework)?)\b/gi;
+	const BRANDING_SURFACES = [
+		".body-sidebar-container",
+		".navbar",
+		".desk-navbar",
+		".sidebar-header-menu",
+		".page-card-head",
+		".modal-dialog",
+		".web-footer",
+	];
+
+	const replaceUpstreamBrand = (value) => {
+		if (!value || !UPSTREAM_BRAND_PATTERN.test(value)) {
+			UPSTREAM_BRAND_PATTERN.lastIndex = 0;
+			return value;
+		}
+		UPSTREAM_BRAND_PATTERN.lastIndex = 0;
+		return value.replace(UPSTREAM_BRAND_PATTERN, BRAND);
+	};
 
 	const redirectToSpeedailySignIn = () => {
 		window.location.replace(SIGN_IN_URL);
@@ -40,12 +60,71 @@
 
 	const updateTitle = () => {
 		if (!document.title || /frappe|erpnext/i.test(document.title)) {
-			document.title = BRAND;
+			document.title = replaceUpstreamBrand(document.title) || BRAND;
 			return;
 		}
-		document.title = document.title
-			.replace(/ERPNext/gi, BRAND)
-			.replace(/Frappe/gi, BRAND);
+	};
+
+	const updateBootBranding = () => {
+		const boot = window.frappe?.boot;
+		if (!boot) {
+			return;
+		}
+
+		for (const app of boot.app_data ?? []) {
+			if (UPSTREAM_APP_NAMES.has(String(app.app_name ?? "").toLowerCase())) {
+				app.app_title = BRAND;
+				app.app_logo_url = LOGO;
+			}
+		}
+
+		for (const app of boot.apps_data?.apps ?? []) {
+			if (UPSTREAM_APP_NAMES.has(String(app.name ?? app.app_name ?? "").toLowerCase())) {
+				if ("title" in app) app.title = BRAND;
+				if ("app_title" in app) app.app_title = BRAND;
+				if ("logo" in app) app.logo = LOGO;
+				if ("app_logo_url" in app) app.app_logo_url = LOGO;
+			}
+		}
+
+		const sidebar = window.frappe?.app?.sidebar;
+		if (sidebar && /frappe|erpnext/i.test(sidebar.header_subtitle ?? "")) {
+			sidebar.header_subtitle = BRAND;
+		}
+	};
+
+	const updateVisibleBranding = () => {
+		const surfaces = document.querySelectorAll(BRANDING_SURFACES.join(","));
+		for (const surface of surfaces) {
+			const walker = document.createTreeWalker(surface, NodeFilter.SHOW_TEXT);
+			let textNode = walker.nextNode();
+			while (textNode) {
+				const updated = replaceUpstreamBrand(textNode.nodeValue);
+				if (updated !== textNode.nodeValue) {
+					textNode.nodeValue = updated;
+				}
+				textNode = walker.nextNode();
+			}
+
+			for (const element of surface.querySelectorAll(
+				"[title], [aria-label], [alt], [data-original-title]"
+			)) {
+				for (const attribute of ["title", "aria-label", "alt", "data-original-title"]) {
+					if (!element.hasAttribute(attribute)) continue;
+					const current = element.getAttribute(attribute);
+					const updated = replaceUpstreamBrand(current);
+					if (updated !== current) {
+						element.setAttribute(attribute, updated);
+					}
+				}
+			}
+		}
+
+		document.querySelectorAll(".body-sidebar .header-subtitle").forEach((subtitle) => {
+			if (/frappe|erpnext/i.test(subtitle.textContent ?? "")) {
+				subtitle.textContent = BRAND;
+			}
+		});
 	};
 
 	const updateLogo = () => {
@@ -109,8 +188,10 @@
 
 	const applyBranding = () => {
 		redirectLoggedOutUsers();
+		updateBootBranding();
 		updateTitle();
 		updateLogo();
+		updateVisibleBranding();
 		addBrandLockup();
 		addTeamAccess();
 	};
@@ -132,10 +213,16 @@
 
 		const observer = new MutationObserver(scheduleBranding);
 		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["title", "aria-label", "alt", "data-original-title"],
+			characterData: true,
 			childList: true,
 			subtree: true,
 		});
-		window.setTimeout(() => observer.disconnect(), 8000);
+
+		if (window.frappe?.router?.on) {
+			window.frappe.router.on("change", scheduleBranding);
+		}
 	};
 
 	if (document.readyState === "loading") {

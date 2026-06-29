@@ -214,6 +214,19 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn('has("redirect-to")', source)
 		self.assertIn("window.location.replace(SIGN_IN_URL)", source)
 
+	def test_desk_branding_replaces_upstream_app_identity(self):
+		source = (
+			ROOT / "speedaily_bos" / "public" / "js" / "speedaily.js"
+		).read_text(encoding="utf-8")
+		self.assertIn('new Set(["erpnext", "frappe"])', source)
+		self.assertIn("app.app_title = BRAND", source)
+		self.assertIn("app.app_logo_url = LOGO", source)
+		self.assertIn('document.querySelectorAll(".body-sidebar .header-subtitle")', source)
+		self.assertIn('if (/frappe|erpnext/i.test(subtitle.textContent ?? ""))', source)
+		self.assertIn("subtitle.textContent = BRAND", source)
+		self.assertIn('window.frappe.router.on("change", scheduleBranding)', source)
+		self.assertNotIn("observer.disconnect()", source)
+
 	def test_frappe_dependencies_are_pinned_to_version_16(self):
 		metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 		dependencies = metadata["tool"]["bench"]["frappe-dependencies"]
