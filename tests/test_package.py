@@ -44,6 +44,10 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn("ensure_required_erpnext_masters", configure_calls)
 		self.assertIn("ensure_indian_fiscal_years", configure_calls)
 		self.assertIn("complete_automated_setup", configure_calls)
+		self.assertIn("def _ensure_customer_groups()", source)
+		self.assertIn('"customer_group_name": customer_group', source)
+		self.assertIn("def _ensure_territories()", source)
+		self.assertIn('"territory_name": territory', source)
 		self.assertIn('"__newname": "Transit"', source)
 
 	def test_item_migration_uses_bounded_idempotent_batches(self):
@@ -62,6 +66,9 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn('{"customer_name": customer_label}', source)
 		self.assertIn("def _upsert_customer_contact(", source)
 		self.assertIn("def _upsert_customer_address(", source)
+		self.assertIn('doc.gst_category = values.get("gst_category") or "Unregistered"', source)
+		self.assertIn('doc.gstin = values.get("gstin") or ""', source)
+		self.assertIn("Speedaily customer import failed at row", source)
 		self.assertIn('"link_doctype": "Customer"', source)
 
 	def test_provisioning_template_refuses_customer_data_and_clears_credentials(self):

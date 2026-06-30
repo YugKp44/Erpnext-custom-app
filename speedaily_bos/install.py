@@ -16,6 +16,8 @@ DEFAULT_CURRENCY = "INR"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_TIMEZONE = "Asia/Kolkata"
 REQUIRED_ITEM_GROUPS = ("Products", "Services")
+REQUIRED_CUSTOMER_GROUPS = ("Commercial",)
+REQUIRED_TERRITORIES = ("India",)
 REQUIRED_PRICE_LISTS = {
 	"Standard Selling": {"selling": 1, "buying": 0},
 	"Standard Buying": {"selling": 0, "buying": 1},
@@ -574,6 +576,8 @@ def ensure_required_erpnext_masters() -> None:
 	"""Create ERPNext masters required by automated company provisioning."""
 	_install_erpnext_presets_if_missing()
 	_ensure_item_groups()
+	_ensure_customer_groups()
+	_ensure_territories()
 	_ensure_uoms()
 	_ensure_price_lists()
 	_ensure_transit_warehouse_type()
@@ -626,6 +630,88 @@ def _ensure_item_groups() -> None:
 				"doctype": "Item Group",
 				"item_group_name": item_group,
 				"parent_item_group": parent,
+				"is_group": 0,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+
+def _ensure_customer_groups() -> None:
+	if not frappe.db.exists("DocType", "Customer Group"):
+		return
+
+	root_customer_group = _("All Customer Groups")
+	if not frappe.db.exists("Customer Group", root_customer_group):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Customer Group",
+				"customer_group_name": root_customer_group,
+				"parent_customer_group": "",
+				"is_group": 1,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+	parent = frappe.db.get_value(
+		"Customer Group",
+		{"is_group": 1},
+		"name",
+		order_by="lft asc",
+	)
+	if not parent:
+		frappe.throw(_("ERPNext does not contain a root Customer Group"))
+
+	for customer_group in REQUIRED_CUSTOMER_GROUPS:
+		if frappe.db.exists("Customer Group", customer_group):
+			continue
+		doc = frappe.get_doc(
+			{
+				"doctype": "Customer Group",
+				"customer_group_name": customer_group,
+				"parent_customer_group": parent,
+				"is_group": 0,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+
+def _ensure_territories() -> None:
+	if not frappe.db.exists("DocType", "Territory"):
+		return
+
+	root_territory = _("All Territories")
+	if not frappe.db.exists("Territory", root_territory):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Territory",
+				"territory_name": root_territory,
+				"parent_territory": "",
+				"is_group": 1,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+	parent = frappe.db.get_value(
+		"Territory",
+		{"is_group": 1},
+		"name",
+		order_by="lft asc",
+	)
+	if not parent:
+		frappe.throw(_("ERPNext does not contain a root Territory"))
+
+	for territory in REQUIRED_TERRITORIES:
+		if frappe.db.exists("Territory", territory):
+			continue
+		doc = frappe.get_doc(
+			{
+				"doctype": "Territory",
+				"territory_name": territory,
+				"parent_territory": parent,
 				"is_group": 0,
 			}
 		)

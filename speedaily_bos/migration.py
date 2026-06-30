@@ -53,6 +53,10 @@ def import_items(items: str | list[dict[str, Any]]) -> dict[str, list[dict[str, 
 			)
 		except Exception as exception:
 			frappe.db.rollback(save_point=save_point)
+			frappe.log_error(
+				title=f"Speedaily item import failed at row {row_number}",
+				message=frappe.get_traceback(),
+			)
 			results.append(
 				{
 					"row_number": row_number,
@@ -102,6 +106,10 @@ def import_customers(
 			)
 		except Exception as exception:
 			frappe.db.rollback(save_point=save_point)
+			frappe.log_error(
+				title=f"Speedaily customer import failed at row {row_number}",
+				message=frappe.get_traceback(),
+			)
 			results.append(
 				{
 					"row_number": row_number,
@@ -133,6 +141,10 @@ def _upsert_customer(values: dict[str, Any]) -> tuple[str, bool]:
 	doc.territory = _required(values.get("territory"), "territory")
 	doc.default_currency = values.get("default_currency") or "INR"
 	doc.tax_id = values.get("tax_id") or ""
+	if doc.meta.has_field("gst_category"):
+		doc.gst_category = values.get("gst_category") or "Unregistered"
+	if doc.meta.has_field("gstin"):
+		doc.gstin = values.get("gstin") or ""
 	doc.website = values.get("website") or ""
 	doc.customer_details = values.get("customer_details") or ""
 	doc.disabled = 0
@@ -226,6 +238,10 @@ def _upsert_customer_address(
 	doc.pincode = _text(values.get("pincode")) or ""
 	doc.email_id = _text(values.get("email")) or ""
 	doc.phone = _text(values.get("phone")) or _text(values.get("mobile")) or ""
+	if doc.meta.has_field("gst_category"):
+		doc.gst_category = values.get("gst_category") or "Unregistered"
+	if doc.meta.has_field("gstin"):
+		doc.gstin = values.get("gstin") or ""
 	doc.set(
 		"links",
 		[{"link_doctype": "Customer", "link_name": customer_name}],
