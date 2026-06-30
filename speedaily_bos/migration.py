@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import flt
 
 MAX_ITEM_BATCH_SIZE = 200
+MAX_CUSTOMER_BATCH_SIZE = 200
 
 
 @frappe.whitelist(methods=["POST"])
@@ -62,6 +63,179 @@ def import_items(items: str | list[dict[str, Any]]) -> dict[str, list[dict[str, 
 			)
 
 	return {"results": results}
+
+
+@frappe.whitelist(methods=["POST"])
+def import_customers(
+	customers: str | list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+	"""Create or update a bounded batch of Customers and their contact details."""
+	frappe.only_for("System Manager")
+	customers = (
+		frappe.parse_json(customers)
+		if isinstance(customers, str)
+		else customers
+	)
+	if not isinstance(customers, list) or not customers:
+		frappe.throw(_("At least one Customer is required"))
+	if len(customers) > MAX_CUSTOMER_BATCH_SIZE:
+		frappe.throw(
+			_("A maximum of {0} Customers can be imported at once").format(
+				MAX_CUSTOMER_BATCH_SIZE
+			)
+		)
+
+	results = []
+	for index, values in enumerate(customers):
+		row_number = values.get("row_number", index + 1)
+		save_point = f"speedaily_customer_{index}"
+		frappe.db.savepoint(save_point)
+		try:
+			customer_name, created = _upsert_customer(values)
+			results.append(
+				{
+					"row_number": row_number,
+					"status": "IMPORTED",
+					"reference": customer_name,
+					"message": "Created" if created else "Updated",
+				}
+			)
+		except Exception as exception:
+			frappe.db.rollback(save_point=save_point)
+			results.append(
+				{
+					"row_number": row_number,
+					"status": "ERROR",
+					"reference": None,
+					"message": _clean_error(exception),
+				}
+			)
+
+	return {"results": results}
+
+
+def _upsert_customer(values: dict[str, Any]) -> tuple[str, bool]:
+	customer_label = _required(values.get("customer_name"), "customer_name")
+	existing = frappe.db.get_value(
+		"Customer",
+		{"customer_name": customer_label},
+		"name",
+	)
+	doc = frappe.get_doc("Customer", existing) if existing else frappe.new_doc("Customer")
+
+	doc.customer_name = customer_label
+	doc.customer_type = (
+		"Individual"
+		if str(values.get("customer_type") or "").strip().lower() == "individual"
+		else "Company"
+	)
+	doc.customer_group = _required(values.get("customer_group"), "customer_group")
+	doc.territory = _required(values.get("territory"), "territory")
+	doc.default_currency = values.get("default_currency") or "INR"
+	doc.tax_id = values.get("tax_id") or ""
+	doc.website = values.get("website") or ""
+	doc.customer_details = values.get("customer_details") or ""
+	doc.disabled = 0
+	doc.flags.ignore_permissions = True
+
+	if existing:
+		doc.save()
+	else:
+		doc.insert()
+
+	contact_name = _upsert_customer_contact(doc.name, values)
+	address_name = _upsert_customer_address(doc.name, customer_label, values)
+	if contact_name:
+		doc.customer_primary_contact = contact_name
+	if address_name:
+		doc.customer_primary_address = address_name
+	if contact_name or address_name:
+		doc.save()
+	return doc.name, not bool(existing)
+
+
+def _upsert_customer_contact(
+	customer_name: str,
+	values: dict[str, Any],
+) -> str | None:
+	email = _text(values.get("email"))
+	phone = _text(values.get("phone"))
+	mobile = _text(values.get("mobile"))
+	contact_name = _text(values.get("contact_name"))
+	if not any((email, phone, mobile, contact_name)):
+		return None
+
+	existing = frappe.db.get_value(
+		"Dynamic Link",
+		{
+			"link_doctype": "Customer",
+			"link_name": customer_name,
+			"parenttype": "Contact",
+		},
+		"parent",
+	)
+	doc = frappe.get_doc("Contact", existing) if existing else frappe.new_doc("Contact")
+	doc.first_name = contact_name or customer_name
+	doc.set("email_ids", [])
+	if email:
+		doc.append("email_ids", {"email_id": email, "is_primary": 1})
+	doc.set("phone_nos", [])
+	if phone:
+		doc.append("phone_nos", {"phone": phone, "is_primary_phone": 1})
+	if mobile and mobile != phone:
+		doc.append("phone_nos", {"phone": mobile, "is_primary_mobile_no": 1})
+	doc.set(
+		"links",
+		[{"link_doctype": "Customer", "link_name": customer_name}],
+	)
+	doc.flags.ignore_permissions = True
+	if existing:
+		doc.save()
+	else:
+		doc.insert()
+	return doc.name
+
+
+def _upsert_customer_address(
+	customer_name: str,
+	customer_label: str,
+	values: dict[str, Any],
+) -> str | None:
+	address_line1 = _text(values.get("address_line1"))
+	city = _text(values.get("city"))
+	if not address_line1 or not city:
+		return None
+
+	existing = frappe.db.get_value(
+		"Dynamic Link",
+		{
+			"link_doctype": "Customer",
+			"link_name": customer_name,
+			"parenttype": "Address",
+		},
+		"parent",
+	)
+	doc = frappe.get_doc("Address", existing) if existing else frappe.new_doc("Address")
+	doc.address_title = customer_label
+	doc.address_type = "Billing"
+	doc.address_line1 = address_line1
+	doc.address_line2 = _text(values.get("address_line2")) or ""
+	doc.city = city
+	doc.state = _text(values.get("state")) or ""
+	doc.country = _text(values.get("country")) or "India"
+	doc.pincode = _text(values.get("pincode")) or ""
+	doc.email_id = _text(values.get("email")) or ""
+	doc.phone = _text(values.get("phone")) or _text(values.get("mobile")) or ""
+	doc.set(
+		"links",
+		[{"link_doctype": "Customer", "link_name": customer_name}],
+	)
+	doc.flags.ignore_permissions = True
+	if existing:
+		doc.save()
+	else:
+		doc.insert()
+	return doc.name
 
 
 def _upsert_item(values: dict[str, Any]) -> tuple[str, bool]:
@@ -121,6 +295,11 @@ def _required(value: Any, fieldname: str) -> str:
 	if not text:
 		frappe.throw(_("{0} is required").format(fieldname))
 	return text
+
+
+def _text(value: Any) -> str | None:
+	text = str(value or "").strip()
+	return text or None
 
 
 def _clean_error(exception: Exception) -> str:

@@ -55,6 +55,15 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn("frappe.db.rollback(save_point=save_point)", source)
 		self.assertIn("def _upsert_item_price(", source)
 
+	def test_customer_migration_uses_bounded_idempotent_batches(self):
+		source = (ROOT / "speedaily_bos" / "migration.py").read_text(encoding="utf-8")
+		self.assertIn("MAX_CUSTOMER_BATCH_SIZE = 200", source)
+		self.assertIn("def import_customers(", source)
+		self.assertIn('{"customer_name": customer_label}', source)
+		self.assertIn("def _upsert_customer_contact(", source)
+		self.assertIn("def _upsert_customer_address(", source)
+		self.assertIn('"link_doctype": "Customer"', source)
+
 	def test_provisioning_template_refuses_customer_data_and_clears_credentials(self):
 		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
 		self.assertIn("def prepare_provisioning_template(", source)
