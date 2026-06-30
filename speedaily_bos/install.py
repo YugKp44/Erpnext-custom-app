@@ -15,6 +15,22 @@ DEFAULT_COUNTRY = "India"
 DEFAULT_CURRENCY = "INR"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_TIMEZONE = "Asia/Kolkata"
+REQUIRED_ITEM_GROUPS = ("Products", "Services")
+REQUIRED_PRICE_LISTS = {
+	"Standard Selling": {"selling": 1, "buying": 0},
+	"Standard Buying": {"selling": 0, "buying": 1},
+}
+REQUIRED_UOMS = {
+	"Nos": True,
+	"Kg": False,
+	"Gram": False,
+	"Litre": False,
+	"Meter": False,
+	"Box": True,
+	"Set": True,
+	"Hour": False,
+	"Day": False,
+}
 
 SPEEDAILY_ROLES = (
 	"Speedaily Owner",
@@ -294,6 +310,7 @@ def configure_tenant(
 	ensure_roles()
 	ensure_required_erpnext_masters()
 	_set_accounting_defaults(country, currency, timezone)
+	_configure_migration_friendly_gst_settings()
 	company = _ensure_company(
 		organization_name=organization_name,
 		abbreviation=abbreviation,
@@ -555,9 +572,112 @@ def ensure_roles() -> None:
 
 def ensure_required_erpnext_masters() -> None:
 	"""Create ERPNext masters required by automated company provisioning."""
-	if not frappe.db.exists("DocType", "Warehouse Type"):
+	_install_erpnext_presets_if_missing()
+	_ensure_item_groups()
+	_ensure_uoms()
+	_ensure_price_lists()
+	_ensure_transit_warehouse_type()
+
+
+def _install_erpnext_presets_if_missing() -> None:
+	if (
+		"erpnext" not in frappe.get_installed_apps()
+		or not frappe.db.exists("DocType", "Item Group")
+		or frappe.db.exists("Item Group", _("All Item Groups"))
+	):
 		return
-	if frappe.db.exists("Warehouse Type", "Transit"):
+
+	from erpnext.setup.setup_wizard.operations.install_fixtures import install
+
+	install(DEFAULT_COUNTRY)
+
+
+def _ensure_item_groups() -> None:
+	if not frappe.db.exists("DocType", "Item Group"):
+		return
+
+	root_item_group = _("All Item Groups")
+	if not frappe.db.exists("Item Group", root_item_group):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Item Group",
+				"item_group_name": root_item_group,
+				"parent_item_group": "",
+				"is_group": 1,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+	parent = frappe.db.get_value(
+		"Item Group",
+		{"is_group": 1},
+		"name",
+		order_by="lft asc",
+	)
+	if not parent:
+		frappe.throw(_("ERPNext does not contain a root Item Group"))
+
+	for item_group in REQUIRED_ITEM_GROUPS:
+		if frappe.db.exists("Item Group", item_group):
+			continue
+		doc = frappe.get_doc(
+			{
+				"doctype": "Item Group",
+				"item_group_name": item_group,
+				"parent_item_group": parent,
+				"is_group": 0,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+
+def _ensure_uoms() -> None:
+	if not frappe.db.exists("DocType", "UOM"):
+		return
+
+	for uom_name, whole_number in REQUIRED_UOMS.items():
+		if frappe.db.exists("UOM", uom_name):
+			continue
+		doc = frappe.get_doc(
+			{
+				"doctype": "UOM",
+				"uom_name": uom_name,
+				"enabled": 1,
+				"must_be_whole_number": int(whole_number),
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+
+def _ensure_price_lists() -> None:
+	if not frappe.db.exists("DocType", "Price List"):
+		return
+
+	currency = frappe.defaults.get_global_default("currency") or DEFAULT_CURRENCY
+	for price_list_name, flags in REQUIRED_PRICE_LISTS.items():
+		if frappe.db.exists("Price List", price_list_name):
+			continue
+		doc = frappe.get_doc(
+			{
+				"doctype": "Price List",
+				"price_list_name": price_list_name,
+				"currency": currency,
+				"enabled": 1,
+				**flags,
+			}
+		)
+		doc.flags.ignore_permissions = True
+		doc.insert()
+
+
+def _ensure_transit_warehouse_type() -> None:
+	if (
+		not frappe.db.exists("DocType", "Warehouse Type")
+		or frappe.db.exists("Warehouse Type", "Transit")
+	):
 		return
 
 	warehouse_type = frappe.get_doc(
@@ -654,6 +774,13 @@ def _set_accounting_defaults(country: str, currency: str, timezone: str) -> None
 		_set_single_if_field("System Settings", "country", country)
 		_set_single_if_field("System Settings", "language", DEFAULT_LANGUAGE)
 		_set_single_if_field("System Settings", "time_zone", timezone)
+
+
+def _configure_migration_friendly_gst_settings() -> None:
+	"""Allow incomplete legacy masters to import before final GST classification."""
+	if not frappe.db.exists("DocType", "GST Settings"):
+		return
+	_set_single_if_field("GST Settings", "validate_hsn_code", 0)
 
 
 def _ensure_company(

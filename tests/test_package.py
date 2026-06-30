@@ -14,6 +14,7 @@ class PackageStructureTest(unittest.TestCase):
 			"speedaily_bos/__init__.py",
 			"speedaily_bos/hooks.py",
 			"speedaily_bos/install.py",
+			"speedaily_bos/migration.py",
 			"speedaily_bos/sso.py",
 			"speedaily_bos/public/css/speedaily.css",
 			"speedaily_bos/public/js/speedaily.js",
@@ -44,6 +45,15 @@ class PackageStructureTest(unittest.TestCase):
 		self.assertIn("ensure_indian_fiscal_years", configure_calls)
 		self.assertIn("complete_automated_setup", configure_calls)
 		self.assertIn('"__newname": "Transit"', source)
+
+	def test_item_migration_uses_bounded_idempotent_batches(self):
+		source = (ROOT / "speedaily_bos" / "migration.py").read_text(encoding="utf-8")
+		self.assertIn("MAX_ITEM_BATCH_SIZE = 200", source)
+		self.assertIn('frappe.only_for("System Manager")', source)
+		self.assertIn('frappe.db.exists("Item", item_code)', source)
+		self.assertIn("frappe.db.savepoint(save_point)", source)
+		self.assertIn("frappe.db.rollback(save_point=save_point)", source)
+		self.assertIn("def _upsert_item_price(", source)
 
 	def test_provisioning_template_refuses_customer_data_and_clears_credentials(self):
 		source = (ROOT / "speedaily_bos" / "install.py").read_text(encoding="utf-8")
