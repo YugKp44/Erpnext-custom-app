@@ -131,3 +131,39 @@ jobs:
       - name: Remove private app manifest
         if: always()
         run: rm -f "$RUNNER_TEMP/apps.json"
+
+  deploy-staging:
+    name: Trigger staging Frappe deployment
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/staging'
+    needs:
+      - publish-staging-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+
+    steps:
+      - name: Trigger Infrastructure staging workflow
+        shell: bash
+        env:
+          INFRA_DISPATCH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$INFRA_DISPATCH_TOKEN" ]; then
+            echo "INFRA_DISPATCH_TOKEN is not configured in the staging environment" >&2
+            exit 1
+          fi
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $INFRA_DISPATCH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/YugKp44/Speedaily-Infrastructure/actions/workflows/deploy-staging-frappe.yml/dispatches \
+            --data '{"ref":"staging"}'
+
+          echo "Infrastructure staging Frappe deployment triggered"
