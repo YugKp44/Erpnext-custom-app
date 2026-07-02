@@ -227,14 +227,17 @@ class PackageStructureTest(unittest.TestCase):
 		source = (
 			ROOT / "speedaily_bos" / "public" / "js" / "speedaily.js"
 		).read_text(encoding="utf-8")
-		self.assertIn('const TEAM_URL = "https://speedaily.dev/app/team"', source)
+		self.assertIn('window.location.hostname.endsWith(".speedaily.dev")', source)
+		self.assertIn('? "https://speedaily.dev"', source)
+		self.assertIn(': "https://speedaily.com"', source)
+		self.assertIn("const TEAM_URL = `${PLATFORM_ORIGIN}/app/team`", source)
 		self.assertIn('roles.includes("Speedaily Owner")', source)
 
 	def test_logout_returns_users_to_speedaily_sign_in(self):
 		source = (
 			ROOT / "speedaily_bos" / "public" / "js" / "speedaily.js"
 		).read_text(encoding="utf-8")
-		self.assertIn('const SIGN_IN_URL = "https://speedaily.dev/signin"', source)
+		self.assertIn("const SIGN_IN_URL = `${PLATFORM_ORIGIN}/signin`", source)
 		self.assertIn("window.frappe.app.redirect_to_login = redirectToSpeedailySignIn", source)
 		self.assertIn('window.location.pathname === "/login"', source)
 		self.assertIn('has("redirect-to")', source)
