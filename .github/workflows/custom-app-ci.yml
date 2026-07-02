@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - staging
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -39,9 +40,9 @@ jobs:
       - name: Run package tests
         run: python -m unittest discover -s tests -v
 
-  publish-staging-image:
-    name: Publish staging Frappe image
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/staging'
+  publish-image:
+    name: Publish Frappe image
+    if: github.event_name != 'pull_request'
     needs:
       - test
     runs-on: ubuntu-latest
@@ -59,10 +60,16 @@ jobs:
         shell: bash
         env:
           REPOSITORY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          if [[ "$APP_BRANCH" != "staging" && "$APP_BRANCH" != "main" ]]; then
+            echo "Images can only be published from staging or main" >&2
+            exit 1
+          fi
           jq -n \
             --arg token "$REPOSITORY_TOKEN" \
+            --arg branch "$APP_BRANCH" \
             '[
               {
                 "url": "https://github.com/frappe/erpnext",
@@ -74,7 +81,7 @@ jobs:
               },
               {
                 "url": ("https://x-access-token:" + $token + "@github.com/YugKp44/Erpnext-custom-app.git"),
-                "branch": "staging"
+                "branch": $branch
               }
             ]' > "$RUNNER_TEMP/apps.json"
           chmod 600 "$RUNNER_TEMP/apps.json"
@@ -85,11 +92,23 @@ jobs:
         run: |
           set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/speedaily-erpnext-india"
+          case "$GITHUB_REF_NAME" in
+            staging)
+              channel="staging"
+              ;;
+            main)
+              channel="production"
+              ;;
+            *)
+              echo "Images can only be published from staging or main" >&2
+              exit 1
+              ;;
+          esac
           {
             echo "image=$image"
             echo "tags<<EOF"
-            echo "$image:staging"
-            echo "$image:staging-$GITHUB_SHA"
+            echo "$image:$channel"
+            echo "$image:$channel-$GITHUB_SHA"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -103,7 +122,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and publish staging image
+      - name: Build and publish image
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -136,7 +155,7 @@ jobs:
     name: Trigger staging Frappe deployment
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/staging'
     needs:
-      - publish-staging-image
+      - publish-image
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: staging
