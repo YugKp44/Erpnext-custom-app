@@ -4,8 +4,14 @@
 	const BRAND = "Speedaily BOS";
 	const LOGO = "/assets/speedaily_bos/images/logo.png";
 	const LOGO_PATH = new URL(LOGO, window.location.origin).pathname;
-	const TEAM_URL = "https://speedaily.dev/app/team";
-	const SIGN_IN_URL = "https://speedaily.dev/signin";
+	const IS_STAGING_WORKSPACE =
+		window.location.hostname === "speedaily.dev" ||
+		window.location.hostname.endsWith(".speedaily.dev");
+	const PLATFORM_ORIGIN = IS_STAGING_WORKSPACE
+		? "https://speedaily.dev"
+		: "https://speedaily.com";
+	const TEAM_URL = `${PLATFORM_ORIGIN}/app/team`;
+	const SIGN_IN_URL = `${PLATFORM_ORIGIN}/signin`;
 	const UPSTREAM_APP_NAMES = new Set(["erpnext", "frappe"]);
 	const UPSTREAM_BRAND_PATTERN = /\b(?:ERPNext|Frappe(?: Framework)?)\b/gi;
 	const BRANDING_SURFACES = [
